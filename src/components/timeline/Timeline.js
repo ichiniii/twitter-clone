@@ -11,22 +11,31 @@ import {
   query,
 } from "firebase/firestore";
 import FlipMove from "react-flip-move";
+import SearchBar from "../search/SearchBar";
 
 function Timeline() {
   const [posts, setPosts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // 検索キーワードのステート
 
   useEffect(() => {
     const postData = collection(db, "posts");
     const q = query(postData, orderBy("timestamp", "desc"));
-    // getDocs(q).then((querySnapshot) => {
-    //   setPosts(querySnapshot.docs.map((doc) => doc.data()));
-    // });
 
     /* リアルタイムでデータを取得 */
-    onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
       setPosts(querySnapshot.docs.map((doc) => doc.data()));
     });
+
+    // クリーンアップ関数
+    return () => unsubscribe();
   }, []);
+
+  // 検索キーワードに基づいてフィルタリング
+  const filteredPosts = posts.filter((post) =>
+    post.tags.some((tag) =>
+      tag.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
 
   return (
     <div className="timeline">
@@ -34,14 +43,18 @@ function Timeline() {
       <div className="timeline--header">
         <h2>ホーム</h2>
       </div>
+
+      {/* 検索バー */}
+      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
       {/* TweetBox */}
       <TweetBox />
 
       {/* Post */}
       <FlipMove>
-        {posts.map((post) => (
+        {filteredPosts.map((post, index) => (
           <Post
-            key={post.text}
+            key={index} // 一意のキーを使用
             displayName={post.displayName}
             username={post.username}
             verified={post.verified}
